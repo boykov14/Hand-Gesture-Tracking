@@ -1,5 +1,7 @@
 """
-This is a script that can be used to retrain the YOLOv2 model for your own dataset.
+Anton Boykov
+This is a script that can be used to train the gesture recognition model
+Script based on code from: https://github.com/allanzelener/YAD2K
 """
 
 import os
@@ -8,171 +10,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 import PIL
 import tensorflow as tf
-import keras as K
 import random
-from tensorflow import floor, mod
-from keras.utils import to_categorical
-from keras import regularizers
-from keras.constraints import min_max_norm
+
 from keras import backend as K
-from keras.layers import Input, Lambda, Conv2D, Reshape
-from keras.layers import ConvLSTM2D
+from keras.layers import Input, Lambda
 from keras.models import load_model, Model
-from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping, Callback
-from keras.optimizers import adam, Nadam, Adamax
-from IPython.display import clear_output
-from keras.optimizers import Optimizer
+from keras.callbacks import TensorBoard, ModelCheckpoint, Callback
+from keras.optimizers import  Nadam
 from keras.utils import Sequence
-from keras.utils import Sequence
-from keras.initializers import glorot_uniform
-from skimage.io import imread
-from skimage.transform import resize
-import livelossplot
+
+
 
 from data_augmentor import augment, check_labels, change_fov
-
-import time
-
-from yolo_body import (preprocess_true_boxes, yolo_body,
-                                     yolo_eval, yolo_head, yolo_loss)
+from data_processing import DataGenerator, process_data, get_detector_mask
+from yolo_body import (preprocess_true_boxes, yolo_body, yolo_eval, yolo_head, yolo_loss)
 from draw_boxes import draw_boxes
+from visualisation import PlotLearning
 
-IMAGESIZE = 150528
-RESOLUTION = [224, 224, 3]
-RESTORE = 'model_progres.h5'
-N_CLASSES = 3
-
-# Default anchor boxes
-YOLO_ANCHORS = np.array(
-    ((0.57273, 0.677385), (1.87446, 2.06253), (3.33843, 5.47434),
-     (7.88282, 3.52778), (9.77052, 9.16828)))
+#getting defaults
+from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, N_CLASSES, YOLO_ANCHORS
 
 
-class PlotLearning(Callback):
-    def on_train_begin(self, logs={}):
-        self.i = 0
-        self.x = []
-        self.losses = []
-        self.val_losses = []
-        self.acc = []
-        self.val_acc = []
-        self.fig = plt.figure()
 
-        self.logs = []
 
-    def on_epoch_end(self, epoch, logs={}):
-        plt.ion()
+print(IMAGESIZE)
 
-        self.logs.append(logs)
-        self.x.append(self.i)
-        self.losses.append(logs.get('loss'))
-        self.val_losses.append(logs.get('val_loss'))
-        self.acc.append(logs.get('acc'))
-        self.val_acc.append(logs.get('val_acc'))
-        self.i += 1
-        f, (ax1, ax2) = plt.subplots(1, 2, sharex=True)
-
-        clear_output(wait=True)
-
-        ax1.set_yscale('log')
-        ax1.plot(self.x, self.losses, label="loss")
-        ax1.plot(self.x, self.val_losses, label="val_loss")
-        ax1.legend()
-
-        ax2.plot(self.x, self.acc, label="accuracy")
-        ax2.plot(self.x, self.val_acc, label="validation accuracy")
-        ax2.legend()
-
-        plt.show();
-        plt.pause(10)
-        plt.close('all')
-        print('continue computation')
-        # at the end call show to ensure window won't close.
-        #plt.show()
-
-class DataGenerator(Sequence):
-    'Generates data for Keras'
-    def __init__(self, names_imgs, names_boxes, anchors, batch_size=10, shuffle = False, timestep=1):
-        'Initialization'
-        self.shuffle = shuffle
-        self.names_imgs = names_imgs
-        self.names_boxes = names_boxes
-        self.batch_size = batch_size
-        self.dataset_sizes = []
-        self.anchors = anchors
-        self.timestep = timestep
-        self.epoch_index = 0
-        self.flip = random.randint(1, 100) % 4
-        self.transpose = random.randint(1, 100) % 2
-
-        self.num_imgs = 0
-        for i in range(len(names_imgs)):
-            size = len(names_imgs[i]) // batch_size * batch_size
-
-            self.dataset_sizes.append(size)
-            self.num_imgs += size
-            self.names_imgs[i] = self.names_imgs[i][:size]
-            self.names_boxes[i] = self.names_boxes[i][:size]
-
-        self.on_epoch_end()
-
-    def __len__(self):
-        'Denotes the number of batches per epoch'
-
-        return int(np.floor(self.num_imgs / self.batch_size))
-
-    def __getitem__(self, index):
-        # if self.epoch_index ==0:
-        #     print("epoch ___1___: index {}".format(index))
-        # else:
-        #print("epoch index {}".format(index))
-        'Generate one batch of data'
-        # Generate indexes of the batch
-        # print(index)
-        # print("    {}".format(index))
-        index = self.indexes[index]
-        # print("    {}".format(index))
-        dataset_index = 0
-        internal_index = 0
-        for i in range(0, len(self.dataset_sizes)):
-            dataset_index += self.dataset_sizes[i]
-            if dataset_index > index * self.batch_size:
-                internal_index = index * self.batch_size - dataset_index + self.dataset_sizes[i]
-                if internal_index == 0:
-                    self.flip = random.randint(1, 100) % 4
-                    self.transpose = random.randint(1, 100) % 2
-                dataset_index = i
-                break
-
-        # indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
-        #
-        # # Find list of IDs
-        # list_IDs_temp = [self.list_IDs[k] for k in indexes]
-        list_images = self.names_imgs[dataset_index][internal_index:internal_index + self.batch_size]
-        list_boxes = self.names_boxes[dataset_index][internal_index:internal_index + self.batch_size]
-
-        self.flip = random.randint(1, 100) % 4
-        self.transpose = random.randint(1, 100) % 2
-
-        list_images, list_boxes = augment(list_images , list_boxes, (index * self.epoch_index), self.flip, self.transpose)
-
-        image_data, boxes = process_data(list_images , list_boxes, 1)
-        detectors_mask, matching_true_boxes = get_detector_mask(boxes, self.anchors)
-
-        # Generate data
-        X, y = [image_data, boxes, detectors_mask, matching_true_boxes], np.zeros(len(image_data)) #((-1, self.timestep, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))), boxes, detectors_mask, matching_true_boxes], np.zeros(len(image_data))
-
-        return X, y
-
-    def on_epoch_end(self):
-        self.flip = random.randint(1, 100) % 4
-        self.transpose = random.randint(1, 100) % 2
-
-        'Updates indexes after each epoch'
-        self.indexes = np.arange(int(np.floor(self.num_imgs / self.batch_size)))
-        if self.shuffle == True:
-            np.random.shuffle(self.indexes)
-        self.epoch_index += 1
 
     # def __data_generation(self, list_IDs_temp):
     #     'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
@@ -297,67 +159,6 @@ def get_anchors(anchors_path):
     else:
         Warning("Could not open anchors file, using default.")
         return YOLO_ANCHORS
-
-def process_data(images, boxes=None, augmented = 0):
-    '''processes the data'''
-    images = [PIL.Image.fromarray(i,'RGB') for i in images]
-    orig_size = np.array([images[0].width, images[0].height])
-    orig_size = np.expand_dims(orig_size, axis=0)
-
-    # Image preprocessing.
-    processed_images = [i.resize((RESOLUTION[0], RESOLUTION[1]), PIL.Image.BICUBIC) for i in images]
-    processed_images = [np.array(image, dtype=np.float) for image in processed_images]
-    processed_images = [image/255. for image in processed_images]
-
-    if boxes is not None:
-        # Box preprocessing.
-        # Original boxes stored as 1D list of class, x_min, y_min, x_max, y_max.
-        if not augmented:
-            boxes = [(box.values).reshape((-1, 5)) for box in boxes]
-        else:
-            boxes = [box.reshape((-1, 5)) for box in boxes]
-
-        # Get extents as y_min, x_min, y_max, x_max, class for comparision with
-        # model output.
-        boxes_extents = [box[:, [1, 0, 3, 2, 4]] for box in boxes]
-
-        # Get box parameters as x_center, y_center, box_width, box_height, class.
-        boxes_xy = [0.5 * (box[:, 2:4] + box[:, 0:2]) for box in boxes]
-        boxes_wh = [box[:, 2:4] - box[:, 0:2] for box in boxes]
-        boxes_xy = [boxxy for boxxy in boxes_xy]
-        boxes_wh = [boxwh for boxwh in boxes_wh]
-        boxes = [np.concatenate((boxes_xy[i], boxes_wh[i], box[:, 4:5]), axis=1) for i, box in enumerate(boxes)]
-
-        # find the max number of boxes
-        max_boxes = 0
-        for boxz in boxes:
-            if boxz.shape[0] > max_boxes:
-                max_boxes = boxz.shape[0]
-
-        # add zero pad for training
-        for i, boxz in enumerate(boxes):
-            if boxz.shape[0]  < max_boxes:
-                zero_padding = np.zeros( (max_boxes-boxz.shape[0], 5), dtype=np.float32)
-                boxes[i] = np.vstack((boxz, zero_padding))
-
-        return np.array(processed_images), np.array(boxes)
-    else:
-        return np.array(processed_images)
-
-def get_detector_mask(boxes, anchors):
-    '''
-    Precompute detectors_mask and matching_true_boxes for training.
-    Detectors mask is 1 for each spatial position in the final conv layer and
-    anchor that should be active for the given boxes and 0 otherwise.
-    Matching true boxes gives the regression targets for the ground truth box
-    that caused a detector to be active or 0 otherwise.
-    '''
-    detectors_mask = [0 for i in range(len(boxes))]
-    matching_true_boxes = [0 for i in range(len(boxes))]
-    for i, box in enumerate(boxes):
-        detectors_mask[i], matching_true_boxes[i] = preprocess_true_boxes(box, anchors, [RESOLUTION[0], RESOLUTION[1]])
-
-    return np.array(detectors_mask), np.array(matching_true_boxes)
 
 def create_model(anchors, class_names, batch_size, timestep, weights, load_pretrained=False, freeze_body=False):
     '''
