@@ -9,7 +9,7 @@ from keras.layers.merge import concatenate
 from keras.models import Model
 
 from utils import compose
-from darknet import (DarknetConv2D, DarknetConv2D_BN_Leaky, darknet_body, yolo_lstm_model)
+from model_network import (DarknetConv2D, DarknetConv2D_BN_Leaky, darknet_body, yolo_lstm_model)
 
 sys.path.append('..')
 

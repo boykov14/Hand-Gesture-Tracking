@@ -33,7 +33,7 @@ from data_augmentor import augment, check_labels, change_fov
 
 import time
 
-from YOLO import (preprocess_true_boxes, yolo_body,
+from yolo_body import (preprocess_true_boxes, yolo_body,
                                      yolo_eval, yolo_head, yolo_loss)
 from draw_boxes import draw_boxes
 
@@ -207,7 +207,7 @@ def _main():
     model_save = 'test.h5'
     model_path = '20180626_model_path.h5'
 
-    classes_path = "classes.txt"
+    classes_path = "parameters\\classes.txt"
     class_names = get_classes(classes_path)
 
     batch_size = 4
@@ -235,8 +235,8 @@ def _main():
     anchors = YOLO_ANCHORS
 
 
-    images_val = np.load('data_img.npy')
-    boxes_val = np.load('data_box.npy')
+    images_val = np.load('C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\data\\mouse_controller\\Sequences\\data_img_val.npy')
+    boxes_val =  np.load('C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\data\\mouse_controller\\Sequences\\data_box_val.npy')
 
     training_generator = DataGenerator(images_training, boxes_training, anchors, batch_size, shuffle = False)
     validation_generator = DataGenerator([images_val], [boxes_val], anchors, batch_size, shuffle = False)
