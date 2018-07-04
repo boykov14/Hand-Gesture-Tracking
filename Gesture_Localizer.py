@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import tensorflow as tf
+import pandas as pd
 
 from keras import backend as K
 from keras.layers import Input, Lambda, ConvLSTM2D, Reshape, Conv2D, MaxPooling2D
@@ -81,31 +82,30 @@ class Gesture_Localizer():
         return yolo_model, model
 
     def extract_data(self, filepath):
-
         lst_data = self.get_results(filepath, [])
+        lst_out = []
 
+        num_files = len(lst_data)
+        num_imgs = [0] * num_files
         for i, file in enumerate(lst_data):
+            print("{}/{}, processing {}".format(i,num_files, file))
+            df = pd.read_csv(file, index_col=0, header=None)
+            count = 0
+            for index, row in df.iterrows():
+                fileparts = index.split('\\')[-2:]
+                name = os.path.join(filepath, fileparts[0],fileparts[1])
+                row_val = pd.Series.dropna(row)
+                lst_out.append([name, row_val])
+                count += 1
 
-            box_file = 0
+            num_imgs[i] = count
 
-            bare_name = img_file.replace('data_img', '')
-            for box_f in lst_box:
-                if bare_name == box_f.replace('data_box', ''):
-                    box_file = box_f
-                    break
+        n_train_files = 2
+        training = sum(num_imgs[:-1 * n_train_files])
+        testing = sum(num_imgs[-1 * n_train_files:])
 
-            if not box_file:
-                print("ERROR, box/img names dont match, {}".format(img_file))
-            else:
-                print("{}\{}: {}, {}".format(i + 1, len(lst_img), img_file, box_file))
-
-            # images_training.append(np.load(img_file))
-            # boxes_training.append(np.load(box_file))
-            images_training.append(img_file)
-            boxes_training.append(box_file)
-
-        training_generator = DataGenerator(images_training[:-2], boxes_training[:-2], YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
-        validation_generator = DataGenerator(images_training[-2:], boxes_training[-2:], YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
+        training_generator = DataGenerator(lst_out[:training], num_files - n_train_files, num_imgs[:-1 * n_train_files],  YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
+        validation_generator = DataGenerator(lst_out[training:testing], n_train_files, num_imgs[-1 * n_train_files:], YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
 
         return training_generator, validation_generator
 
@@ -128,7 +128,7 @@ class Gesture_Localizer():
 
         return lst_img, lst_box
 
-    def get_results(root_folder, lst):
+    def get_results(self, root_folder, lst):
 
         os.chdir(root_folder)
 

@@ -12,7 +12,7 @@ from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, DATA
 
 #main script from which the training is conducted
 def _main():
-    batch_size = 10
+    batch_size = 5
     timestep = 1
     lr = 0.0001
     dc = 0.004

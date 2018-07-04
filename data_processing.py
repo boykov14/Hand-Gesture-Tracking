@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 import random
 import PIL
@@ -5,17 +6,19 @@ import PIL
 from keras.utils import Sequence
 from data_augmentor import augment, check_labels
 from yolo_body import preprocess_true_boxes
+import cv2
 
 # Setting Default Values
 from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, N_CLASSES, YOLO_ANCHORS
 
 class DataGenerator(Sequence):
     'Generates data for Keras'
-    def __init__(self, names_imgs, names_boxes, anchors, stage, batch_size=10, shuffle = False, timestep=1):
+    def __init__(self, img_files, num_files, count_imgs, anchors, stage, batch_size=10, shuffle = False, timestep=1):
         'Initialization'
         self.shuffle = shuffle
-        self.names_imgs = names_imgs
-        self.names_boxes = names_boxes
+        self.img_files = img_files
+        self.num_files = num_files
+        self.count_imgs = count_imgs
         self.batch_size = batch_size
         self.dataset_sizes = []
         self.anchors = anchors
@@ -26,15 +29,10 @@ class DataGenerator(Sequence):
         self.stage = stage
         self.data_im = [0] * 20
         self.data_bo = [0] * 20
+        self.prev = np.zeros((RESOLUTION[0], RESOLUTION[1], 1))
+        self.diff = np.zeros((RESOLUTION[0], RESOLUTION[1], 1))
 
-        self.num_imgs = 0
-        for i in range(len(names_imgs)):
-            size = len(names_imgs[i]) // batch_size * batch_size
-
-            self.dataset_sizes.append(size)
-            self.num_imgs += size
-            self.names_imgs[i] = self.names_imgs[i][:size]
-            self.names_boxes[i] = self.names_boxes[i][:size]
+        self.num_imgs = len(self.img_files)
 
         self.on_epoch_end()
 
@@ -44,39 +42,29 @@ class DataGenerator(Sequence):
         return int(np.floor(self.num_imgs / self.batch_size))
 
     def __getitem__(self, index):
-        # if self.epoch_index ==0:
-        #     print("epoch ___1___: index {}".format(index))
-        # else:
-        #print("epoch index {}".format(index))
-        'Generate one batch of data'
-        # Generate indexes of the batch
-        # print(index)
-        # print("    {}".format(index))
-        index = self.indexes[index]
-        # print("    {}".format(index))
-        dataset_index = 0
-        internal_index = 0
-        for i in range(0, len(self.dataset_sizes)):
-            dataset_index += self.dataset_sizes[i]
-            if dataset_index > index * self.batch_size:
-                internal_index = index * self.batch_size - dataset_index + self.dataset_sizes[i]
-                if internal_index == 0:
-                    self.flip = random.randint(1, 100) % 4
-                    self.transpose = random.randint(1, 100) % 2
-                dataset_index = i
-                break
 
-        # indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
-        #
-        # # Find list of IDs
-        # list_IDs_temp = [self.list_IDs[k] for k in indexes]
-        if type(self.data_im[dataset_index]) == int:
-            self.data_im[dataset_index] = np.load(self.names_imgs[dataset_index] + '.npy')
-            self.data_bo[dataset_index] = np.load(self.names_boxes[dataset_index]+ '.npy')
+        end_index = index + self.batch_size
+        list_images = []
+        list_boxes = []
+
+        for val in self.img_files[index:end_index]:
+            img = cv2.imread(val[0])
+            img = self.reformat(img)
+
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            diff = cv2.subtract(gray.astype(np.uint8), self.prev.astype(np.uint8))
+            A = np.zeros((RESOLUTION[0], RESOLUTION[1], 1))
+            A[diff > 10] = 1
+            diff = A
+            self.prev = gray
+
+            result = np.concatenate((img.astype(np.uint8), diff), axis=2)
+            list_images.append(result)
+            list_boxes.append(val[1])
 
 
-        list_images = self.data_im[dataset_index][internal_index:internal_index + self.batch_size]
-        list_boxes = self.data_bo[dataset_index][internal_index:internal_index + self.batch_size]
+        # list_images = self.data_im[dataset_index][internal_index:internal_index + self.batch_size]
+        # list_boxes = self.data_bo[dataset_index][internal_index:internal_index + self.batch_size]
 
         self.flip = random.randint(1, 100) % 4
         self.transpose = random.randint(1, 100) % 2
@@ -90,6 +78,11 @@ class DataGenerator(Sequence):
         X, y = [image_data, boxes, detectors_mask, matching_true_boxes], np.zeros(len(image_data)) #((-1, self.timestep, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))), boxes, detectors_mask, matching_true_boxes], np.zeros(len(image_data))
 
         return X, y
+
+    def reformat(self, frame):
+        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.resize(frame, (RESOLUTION[0], RESOLUTION[1]), interpolation=cv2.INTER_AREA)
+        return frame
 
     def on_epoch_end(self):
         self.flip = random.randint(1, 100) % 4

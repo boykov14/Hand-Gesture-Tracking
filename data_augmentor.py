@@ -8,7 +8,7 @@ RESOLUTION = [224, 224, 3]
 
 def augment(images, boxes, code, flip = -1, transpose = -1):
     # check_labels(images, boxes, ["lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol"])
-   # cv2.imshow('image', draw_boxes(images[0], [boxes[0].values[:4] * 224], [boxes[0].values[4].astype(int)], ["lol", "lol"]))
+
 
     # seed = np.random.seed(code)
 
@@ -31,6 +31,8 @@ def augment(images, boxes, code, flip = -1, transpose = -1):
             image = cv2.warpAffine(image, M, (RESOLUTION[0], RESOLUTION[1]))
         out_images.append(image)
         out_boxes.append(box_adjust(box, flip, transpose))
+        # cv2.imshow('a', image[:,:,3])
+        # cv2.waitKey(60)
 
     # check_labels(out_images, out_boxes, ["lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol"], 1)
 
