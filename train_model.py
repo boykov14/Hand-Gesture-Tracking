@@ -5,63 +5,84 @@ Script based on code from: https://github.com/allanzelener/YAD2K
 """
 
 import os
-
-import matplotlib.pyplot as plt
 import numpy as np
-import PIL
 import tensorflow as tf
-import random
 
 from keras import backend as K
-from keras.layers import Input, Lambda
+from keras.layers import Input, Lambda, ConvLSTM2D, Reshape
 from keras.models import load_model, Model
 from keras.callbacks import TensorBoard, ModelCheckpoint, Callback
 from keras.optimizers import  Nadam
-from keras.utils import Sequence
+from keras.regularizers import l2
 
-
-
-from data_augmentor import augment, check_labels, change_fov
+#getting necessary values from local files
 from data_processing import DataGenerator, process_data, get_detector_mask
 from yolo_body import (preprocess_true_boxes, yolo_body, yolo_eval, yolo_head, yolo_loss)
-from draw_boxes import draw_boxes
-from visualisation import PlotLearning
+from visualisation import PlotLearning, draw_boxes
 
 #getting defaults
 from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, N_CLASSES, YOLO_ANCHORS
 
-
-
-
-print(IMAGESIZE)
-
-
-    # def __data_generation(self, list_IDs_temp):
-    #     'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
-    #     # Initialization
-    #     X = np.empty((self.batch_size, *self.dim, self.n_channels))
-    #     y = np.empty((self.batch_size), dtype=int)
-    #
-    #     # Generate data
-    #     for i, ID in enumerate(list_IDs_temp):
-    #         # Store sample
-    #         X[i,] = np.load('data/' + ID + '.npy')
-    #
-    #         # Store class
-    #         y[i] = self.labels[ID]
-    #
-    #     return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
-
+#setting up plotting class
 plot_losses = PlotLearning()
 
-# plot_losses = PlotLosses()
-# plot_losses = livelossplot.PlotLossesKeras()
+#defining class which we will use for creating/manipulating model
+class Gesture_Localizer():
 
-# helper = lambda i, b, a: [i, b].append(get_detector_mask(b, a))
-# process = lambda x, y, a: helper(process_data(x, y), a)
+    def __init__(self, n_classes, batch_size, timestep, lr = 0.0001, dc = 0.004):
+        self.RESOLUTION = RESOLUTION
+        self.n_classes = n_classes
+        self.batch_size = batch_size
+        self.timestep = timestep
+
+        optimizer = Nadam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-8, schedule_decay=dc)
+        [yolo_model_first, self.model_first] = self.create_first_stage()
+        self.model_first.compile(optimizer=optimizer, loss={'yolo_loss': lambda y_true, y_pred: y_pred}, metrics=['accuracy'])
+
+    def create_first_stage(self, anchors = YOLO_ANCHORS):
+
+        detectors_mask_shape = (RESOLUTION[0] // 8, RESOLUTION[1] // 8, 5, 1)
+        matching_boxes_shape = (RESOLUTION[0] // 8, RESOLUTION[1] // 8, 5, 5)
+
+        # Create model input layers.
+        image_input = Input(batch_shape=(self.batch_size, self.timestep, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))
+        boxes_input = Input(shape=(None, 5))
+        detectors_mask_input = Input(shape=detectors_mask_shape)
+        matching_boxes_input = Input(shape=matching_boxes_shape)
+
+        # Create model body.
+        yolo_model = yolo_body(image_input, len(anchors), self.n_classes, self.batch_size, 0)
+
+        reg = l2(5e-4)
+
+        x = yolo_model.output
+        dims = x.shape
+        x = Reshape((1, int(dims[1]), int(dims[2]), int(dims[3])))(x)
+        x = ConvLSTM2D(len(anchors)*(5+self.n_classes), (1, 1), activation='linear', kernel_initializer= 'glorot_uniform', kernel_regularizer=reg , recurrent_regularizer=reg , bias_regularizer=reg , activity_regularizer=reg, stateful=False)(x)
+        x = Reshape((int(dims[1]), int(dims[2]), int(dims[3])))(x)
 
 
+        # Place model loss on CPU to reduce GPU memory usage.
+        with tf.device('/cpu:0'):
+            # TODO: Replace Lambda with custom Keras layer for loss.
+            model_loss = Lambda(
+                yolo_loss,
+                output_shape=(1,),
+                name='yolo_loss',
+                arguments={'anchors': anchors, 'num_classes': self.n_classes})([x, boxes_input, detectors_mask_input, matching_boxes_input])
+
+        model = Model(
+            [yolo_model.input, boxes_input, detectors_mask_input,
+             matching_boxes_input], model_loss)
+
+        return yolo_model, model
+
+    def extract_data(self, filepath):
+
+#main script from which the training is conducted
 def _main():
+    a = Gesture_Localizer(N_CLASSES, 10, 1)
+    print(a.model_first.summary())
 
     data_path = "D:\\machine_learning\\mouse_control\\data\\combined_data.npy"
     # best_model_path = 'model_best_new.h5'
@@ -160,68 +181,7 @@ def get_anchors(anchors_path):
         Warning("Could not open anchors file, using default.")
         return YOLO_ANCHORS
 
-def create_model(anchors, class_names, batch_size, timestep, weights, load_pretrained=False, freeze_body=False):
-    '''
-    returns the body of the model and the model
-    # Params:
-    load_pretrained: whether or not to load the pretrained model or initialize all weights
-    freeze_body: whether or not to freeze all weights except for the last layer's
-    # Returns:
-    model_body: YOLOv2 with new output layer
-    model: YOLOv2 with custom loss Lambda layer
-    '''
 
-    detectors_mask_shape = (RESOLUTION[0]//32, RESOLUTION[1]//32, 5, 1)
-    matching_boxes_shape = (RESOLUTION[0]//32, RESOLUTION[1]//32, 5, 5)
-
-    # Create model input layers.
-    image_input = Input(batch_shape=(batch_size, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))
-    boxes_input = Input(shape=(None, 5))
-    detectors_mask_input = Input(shape=detectors_mask_shape)
-    matching_boxes_input = Input(shape=matching_boxes_shape)
-
-    # Create model body.
-    yolo_model = yolo_body(image_input, len(anchors), len(class_names))
-    # topless_yolo = Model(yolo_model.input, yolo_model.layers[-2].output)
-
-    # yolo_model.load_weights(weights)
-    #
-    # reg = regularizers.l1(3)
-    # constr = min_max_norm(min_value=-0.5, max_value=0.5)
-    #
-    # x = yolo_model.output
-    # x = Reshape((1, 7, 7, 45))(x)
-    # x = ConvLSTM2D(len(anchors)*(5+len(class_names)), (1, 1), activation='linear', kernel_initializer= 'glorot_uniform', kernel_regularizer=reg , recurrent_regularizer=reg , bias_regularizer=reg , activity_regularizer=reg , kernel_constraint=None, recurrent_constraint=None, bias_constraint=None, stateful=False)(x)
-    # x = Reshape((7, 7, 45))(x)
-
-    if load_pretrained:
-        yolo_model = load_model(load_pretrained)
-
-    if freeze_body:
-        for layer in yolo_model.layers[0:-2]:
-            layer.trainable = False
-
-    # final_layer = Conv2D(len(anchors)*(5+len(class_names)), (1, 1), activation='linear')(topless_yolo.output)
-
-
-    # Place model loss on CPU to reduce GPU memory usage.
-    with tf.device('/cpu:0'):
-        # TODO: Replace Lambda with custom Keras layer for loss.
-        model_loss = Lambda(
-            yolo_loss,
-            output_shape=(1, ),
-            name='yolo_loss',
-            arguments={'anchors': anchors,
-                       'num_classes': len(class_names)})([
-                           yolo_model.output, boxes_input,
-                           detectors_mask_input, matching_boxes_input
-                       ])
-
-    model = Model(
-        [yolo_model.input, boxes_input, detectors_mask_input,
-         matching_boxes_input], model_loss)
-
-    return yolo_model, model
 
 
 def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, savepath, batch_size, validation_split=0.1):
@@ -286,105 +246,6 @@ def train_gen(model, training_generator, validation_generator, savepath):
     # model.save_weights(savepath)
     model.fit_generator(generator=training_generator, validation_data=validation_generator, epochs=1000, verbose=1, callbacks = [logging, plot_losses], shuffle=True)
     model.save_weights(savepath)
-
-    # print(history.history.keys())
-    # # summarize history for accuracy
-    # plt.plot(history.history['acc'])
-    # plt.plot(history.history['val_acc'])
-    # plt.title('model accuracy')
-    # plt.ylabel('accuracy')
-    # plt.xlabel('epoch')
-    # plt.legend(['train', 'test'], loc='upper left')
-    # plt.show()
-    # # summarize history for loss
-    # plt.plot(history.history['loss'])
-    # plt.plot(history.history['val_loss'])
-    # plt.title('model loss')
-    # plt.ylabel('loss')
-    # plt.xlabel('epoch')
-    # plt.legend(['train', 'test'], loc='upper left')
-    # plt.show()
-
-#lol
-    # for i in range(100):
-    #     model.fit_generator(generator=generator, #,([image_data, boxes, detectors_mask, matching_true_boxes],
-    #               #np.zeros(len(image_data)),
-    #               #validation_split=validation_split,
-    #               # batch_size=batch_size,
-    #               steps_per_epoch=100,
-    #               epochs=5,
-    #               shuffle=False,
-    #               # use_multiprocessing = True,
-    #               callbacks=[logging])
-    #     model.save_weights(RESTORE)
-    #
-    #     preds = model.evaluate_generator(
-    #               # [image_data, boxes, detectors_mask, matching_true_boxes],
-    #               # np.zeros(len(image_data)),
-    #               generator=generator,
-    #               # batch_size=batch_size,
-    #               verbose=1,
-    #               sample_weight=None)
-    #
-    #     print()
-    #     print("Loss = " + str(preds[0]))
-    #     print("Test Accuracy = " + str(preds[1]))
-
-
-
-def draw(model_body, class_names, anchors, image_data, image_set='train',
-            weights_name='model_save.h5', out_path="output_images", save_all=True):
-    '''
-    Draw bounding boxes on image data
-    '''
-    if image_set == 'train':
-        image_data = np.array([np.expand_dims(image, axis=0)
-            for image in image_data[:int(len(image_data)*.9)]])
-    elif image_set == 'val':
-        image_data = np.array([np.expand_dims(image, axis=0)
-            for image in image_data[int(len(image_data)*.9):]])
-    elif image_set == 'all':
-        image_data = np.array([np.expand_dims(image, axis=0)
-            for image in image_data])
-    else:
-        ValueError("draw argument image_set must be 'train', 'val', or 'all'")
-    # model_body.load_weights(weights_name)
-    print(image_data.shape)
-    model_body.load_weights(weights_name)
-
-    # Create output variables for prediction.
-    yolo_outputs = yolo_head(model_body.output, anchors, len(class_names))
-    input_image_shape = K.placeholder(shape=(2, ))
-    boxes, scores, classes = yolo_eval(
-        yolo_outputs, input_image_shape, score_threshold=0.07, iou_threshold=0)
-
-    # Run prediction on overfit image.
-    sess = K.get_session()  # TODO: Remove dependence on Tensorflow session.
-
-    if  not os.path.exists(out_path):
-        os.makedirs(out_path)
-    for i in range(len(image_data)):
-        out_boxes, out_scores, out_classes = sess.run(
-            [boxes, scores, classes],
-            feed_dict={
-                model_body.input: image_data[i],
-                input_image_shape: [image_data.shape[2], image_data.shape[3]],
-                K.learning_phase(): 0
-            })
-        print('Found {} boxes for image.'.format(len(out_boxes)))
-        print(out_boxes)
-
-        # Plot image with predicted boxes.
-        image_with_boxes = draw_boxes(image_data[i][0], out_boxes, out_classes,
-                                    class_names, out_scores)
-        # Save the image:
-        if save_all or (len(out_boxes) > 0):
-            image = PIL.Image.fromarray(image_with_boxes)
-            image.save(os.path.join(out_path,str(i)+'.png'))
-
-        # To display (pauses the program):
-        # plt.imshow(image_with_boxes, interpolation='nearest')
-        # plt.show()
 
 
 

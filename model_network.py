@@ -2,13 +2,15 @@
 import functools
 from functools import partial
 
-from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten
+from keras.layers import Conv2D, MaxPooling2D, MaxPooling3D, Reshape, Input, Dense, Flatten
 from keras.layers.convolutional_recurrent import ConvLSTM2D
 from keras.initializers import glorot_uniform
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model, Sequential
 from keras.regularizers import l2
+
+import tensorflow as tf
 
 from utils import compose
 
@@ -76,24 +78,62 @@ def darknet19(inputs):
     logits = DarknetConv2D(1000, (1, 1), activation='softmax')(body)
     return Model(inputs, logits)
 
-def yolo_lstm_model(input, num_anchors, num_classes):
-    """Generate Darknet-19 model for Imagenet classification."""
+def yolo_lstm_stage_1(input, num_anchors, num_classes, stateful = False):
+    X = ConvLSTM2D(filters=64, kernel_size=(3, 3), padding='same', return_sequences=True, stateful=stateful, data_format='channels_last', kernel_regularizer = l2(5e-4))(input)
 
-    X = ConvLSTM2D(filters=64, kernel_size=(3, 3),  padding='same',  return_sequences=True, stateful=True, data_format='channels_last')(input)
+    dims = X.shape
+    print(X.shape, dims[2], dims[3], dims[4])
+    X = Reshape(( int(dims[2]), int(dims[3]), int(dims[4])))(X)#tf.reshape(X, [dims[0], dims[2], dims[3], dims[4]]) #Reshape((dims[0] * dims[1], dims[2], dims[3], dims[4]))(X)
+    print(X.shape)
     X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1)(X)
+    X = MaxPooling2D()(X)
 
-    X = ConvLSTM2D(filters=32, kernel_size=(3, 3), padding='same', return_sequences=True, stateful=True, data_format='channels_last')(X)
+    X = Conv2D(filters=64, kernel_size=(3, 3), padding='same', kernel_regularizer = l2(5e-4))(X)
     X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1)(X)
+    X = MaxPooling2D()(X)
 
-    X = ConvLSTM2D(filters=64, kernel_size=(3, 3), padding='same', stateful=True, data_format='channels_last')(X)
+    X = Conv2D(filters=128, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
     X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1, name='middle_layer')(X)
 
-    X = darknet_body()(X)
+    X = Conv2D(filters=64, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
+    X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1)(X)
+
+    X = Conv2D(filters=128, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
+    X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1)(X)
+    X = MaxPooling2D()(X)
+
+    logits = Conv2D(filters=256, kernel_size=(1, 1), padding='same', kernel_regularizer=l2(5e-4), activation='softmax')(X)
+    return Model(input, logits)
 
 
-    X = DarknetConv2D_BN_Leaky(1024, (3, 3))(X)
-    X = DarknetConv2D(num_anchors * (num_classes + 5), (1, 1))(X)
+def yolo_lstm_stage_2(input, num_anchors, num_classes):
+    pass
 
+def yolo_lstm_stage_3(input, num_anchors, num_classes):
+    pass
 
-
-    return Model(input, X)
+# def yolo_lstm_model(input, num_anchors, num_classes):
+#     """Generate Darknet-19 model for Imagenet classification."""
+#
+#     X = ConvLSTM2D(filters=32, kernel_size=(3, 3),  padding='same',  return_sequences=True, stateful=True, data_format='channels_last')(input)
+#     X = BatchNormalization()(X)
+#     X = LeakyReLU(alpha=0.1)(X)
+#
+#     X = Conv2D(filters=64, kernel_size=(3, 3), padding='same')(input)
+#     X = BatchNormalization()(X)
+#     X = LeakyReLU(alpha=0.1)(X)
+#
+#     X = darknet_body()(X)
+#
+#
+#     X = DarknetConv2D_BN_Leaky(1024, (3, 3))(X)
+#     X = DarknetConv2D(num_anchors * (num_classes + 5), (1, 1))(X)
+#
+#
+#
+#     return Model(input, X)

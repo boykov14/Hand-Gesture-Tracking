@@ -4,12 +4,12 @@ import sys
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
-from keras.layers import Lambda, Dense, Input
+from keras.layers import Lambda, Dense, Input, ConvLSTM2D, Reshape
 from keras.layers.merge import concatenate
 from keras.models import Model
 
 from utils import compose
-from model_network import (DarknetConv2D, DarknetConv2D_BN_Leaky, darknet_body, yolo_lstm_model)
+from model_network import (DarknetConv2D, DarknetConv2D_BN_Leaky, darknet_body, yolo_lstm_stage_1)
 
 sys.path.append('..')
 
@@ -44,14 +44,24 @@ def space_to_depth_x2_output_shape(input_shape):
                                                     4 * input_shape[3])
 
 
-def yolo_body(inputs, num_anchors, num_classes):
+def yolo_body(inputs, num_anchors, num_classes, batch_size, stage):
     """Create YOLO_V2 model CNN body in Keras."""
-    darknet = Model(inputs, darknet_body()(inputs))
-    conv20 = compose(
-        DarknetConv2D_BN_Leaky(1024, (3, 3)),
-        DarknetConv2D_BN_Leaky(1024, (3, 3)))(darknet.output)
+    if stage not in (0,1,2):
+        print("Incorrect Stage: {}".format(stage))
+    else:
+        if stage == 0:
+            network = yolo_lstm_stage_1(inputs, num_anchors, num_classes, stateful = False)
+        if stage == 1:
+            network = Model(inputs, darknet_body()(inputs))
+        if stage == 2:
+            network = Model(inputs, darknet_body()(inputs))
 
-    conv13 = darknet.layers[43].output
+    conv20 = compose(
+        DarknetConv2D_BN_Leaky(256, (3, 3)),
+        DarknetConv2D_BN_Leaky(256, (3, 3)))(network.output)
+
+    conv13 = network.get_layer('middle_layer').output
+
     conv21 = DarknetConv2D_BN_Leaky(64, (1, 1))(conv13)
     # TODO: Allow Keras Lambda to use func arguments for output_shape?
     conv21_reshaped = Lambda(
@@ -60,17 +70,9 @@ def yolo_body(inputs, num_anchors, num_classes):
         name='space_to_depth')(conv21)
 
     x = concatenate([conv21_reshaped, conv20])
-    x = DarknetConv2D_BN_Leaky(1024, (3, 3))(x)
+    x = DarknetConv2D_BN_Leaky(256, (3, 3))(x)
     x = DarknetConv2D(num_anchors * (num_classes + 5), (1, 1))(x)
     return Model(inputs, x)
-
-def yolo_body_lstm(input_shape, num_anchors, num_classes):
-    """Create YOLO_V2 model CNN body in Keras."""
-    #body = darknet_body()(inputs)
-    darknet = yolo_lstm_model(input_shape, num_anchors, num_classes)
-
-
-    return darknet
 
 
 def yolo_head(feats, anchors, num_classes):
