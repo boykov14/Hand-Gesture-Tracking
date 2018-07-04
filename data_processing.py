@@ -24,6 +24,8 @@ class DataGenerator(Sequence):
         self.flip = random.randint(1, 100) % 4
         self.transpose = random.randint(1, 100) % 2
         self.stage = stage
+        self.data_im = [0] * 20
+        self.data_bo = [0] * 20
 
         self.num_imgs = 0
         for i in range(len(names_imgs)):
@@ -68,8 +70,13 @@ class DataGenerator(Sequence):
         #
         # # Find list of IDs
         # list_IDs_temp = [self.list_IDs[k] for k in indexes]
-        list_images = self.names_imgs[dataset_index][internal_index:internal_index + self.batch_size]
-        list_boxes = self.names_boxes[dataset_index][internal_index:internal_index + self.batch_size]
+        if type(self.data_im[dataset_index]) == int:
+            self.data_im[dataset_index] = np.load(self.names_imgs[dataset_index] + '.npy')
+            self.data_bo[dataset_index] = np.load(self.names_boxes[dataset_index]+ '.npy')
+
+
+        list_images = self.data_im[dataset_index][internal_index:internal_index + self.batch_size]
+        list_boxes = self.data_bo[dataset_index][internal_index:internal_index + self.batch_size]
 
         self.flip = random.randint(1, 100) % 4
         self.transpose = random.randint(1, 100) % 2
@@ -96,7 +103,7 @@ class DataGenerator(Sequence):
 
 def process_data(images, stage, boxes=None, augmented=0):
     '''processes the data'''
-    images = [PIL.Image.fromarray(i, 'RGB') for i in images]
+    images = [PIL.Image.fromarray(i, 'RGBA') for i in images]
     orig_size = np.array([images[0].width, images[0].height])
     orig_size = np.expand_dims(orig_size, axis=0)
 

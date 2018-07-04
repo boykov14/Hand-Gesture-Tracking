@@ -82,16 +82,9 @@ class Gesture_Localizer():
 
     def extract_data(self, filepath):
 
-        lst_img, lst_box = self.__get_data(filepath, [], [])
+        lst_data = self.get_results(filepath, [])
 
-        if len(lst_img) != len(lst_box):
-            print("Data Dimentions Dont Match {}, {}".format(len(lst_img), len(lst_box)))
-            exit(1)
-
-        images_training = []
-        boxes_training = []
-
-        for i, img_file in enumerate(lst_img):
+        for i, file in enumerate(lst_data):
 
             box_file = 0
 
@@ -106,8 +99,10 @@ class Gesture_Localizer():
             else:
                 print("{}\{}: {}, {}".format(i + 1, len(lst_img), img_file, box_file))
 
-            images_training.append(np.load(img_file))
-            boxes_training.append(np.load(box_file))
+            # images_training.append(np.load(img_file))
+            # boxes_training.append(np.load(box_file))
+            images_training.append(img_file)
+            boxes_training.append(box_file)
 
         training_generator = DataGenerator(images_training[:-2], boxes_training[:-2], YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
         validation_generator = DataGenerator(images_training[-2:], boxes_training[-2:], YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
@@ -132,6 +127,22 @@ class Gesture_Localizer():
                         lst_box.append(os.path.abspath(elem))
 
         return lst_img, lst_box
+
+    def get_results(root_folder, lst):
+
+        os.chdir(root_folder)
+
+        for elem in os.listdir():
+
+            if os.path.isdir(elem):
+                # print(elem)
+                lst = self.get_results(elem, lst)
+                os.chdir('..')
+            else:
+                if "Final" in elem and ".csv" in elem:
+                    lst.append(os.path.abspath(elem))
+
+        return lst
 
     def train_model(self, stage, stateful = 0):
 
