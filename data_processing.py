@@ -11,7 +11,7 @@ from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, N_CL
 
 class DataGenerator(Sequence):
     'Generates data for Keras'
-    def __init__(self, names_imgs, names_boxes, anchors, batch_size=10, shuffle = False, timestep=1):
+    def __init__(self, names_imgs, names_boxes, anchors, stage, batch_size=10, shuffle = False, timestep=1):
         'Initialization'
         self.shuffle = shuffle
         self.names_imgs = names_imgs
@@ -23,6 +23,7 @@ class DataGenerator(Sequence):
         self.epoch_index = 0
         self.flip = random.randint(1, 100) % 4
         self.transpose = random.randint(1, 100) % 2
+        self.stage = stage
 
         self.num_imgs = 0
         for i in range(len(names_imgs)):
@@ -75,7 +76,7 @@ class DataGenerator(Sequence):
 
         list_images, list_boxes = augment(list_images , list_boxes, (index * self.epoch_index), self.flip, self.transpose)
 
-        image_data, boxes = process_data(list_images , list_boxes, 1)
+        image_data, boxes = process_data(list_images, self.stage, list_boxes, 1)
         detectors_mask, matching_true_boxes = get_detector_mask(boxes, self.anchors)
 
         # Generate data
@@ -93,7 +94,7 @@ class DataGenerator(Sequence):
             np.random.shuffle(self.indexes)
         self.epoch_index += 1
 
-def process_data(images, boxes=None, augmented=0):
+def process_data(images, stage, boxes=None, augmented=0):
     '''processes the data'''
     images = [PIL.Image.fromarray(i, 'RGB') for i in images]
     orig_size = np.array([images[0].width, images[0].height])
@@ -112,6 +113,12 @@ def process_data(images, boxes=None, augmented=0):
             boxes = [(box.values).reshape((-1, 5)) for box in boxes]
         else:
             boxes = [box.reshape((-1, 5)) for box in boxes]
+
+        if stage == 0:
+            for i in range(len(boxes)):
+                for j in range(len(boxes[i])):
+                    boxes[i][j][4] = 0
+
 
         # Get extents as y_min, x_min, y_max, x_max, class for comparision with
         # model output.

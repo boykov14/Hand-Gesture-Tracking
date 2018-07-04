@@ -14,7 +14,7 @@ from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, DATA
 def _main():
     batch_size = 10
     timestep = 1
-    lr - 0.0001
+    lr = 0.0001
     dc = 0.004
     a = Gesture_Localizer(N_CLASSES[0], batch_size, timestep, lr=lr, dc=dc)
     print(a.model_first.summary())

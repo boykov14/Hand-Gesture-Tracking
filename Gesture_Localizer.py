@@ -109,8 +109,8 @@ class Gesture_Localizer():
             images_training.append(np.load(img_file))
             boxes_training.append(np.load(box_file))
 
-        training_generator = DataGenerator(images_training[:-2], boxes_training[:-2], YOLO_ANCHORS, self.batch_size, shuffle=False)
-        validation_generator = DataGenerator(images_training[-2:], boxes_training[-2:], YOLO_ANCHORS, self.batch_size, shuffle=False)
+        training_generator = DataGenerator(images_training[:-2], boxes_training[:-2], YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
+        validation_generator = DataGenerator(images_training[-2:], boxes_training[-2:], YOLO_ANCHORS, 0, self.batch_size, shuffle=False)
 
         return training_generator, validation_generator
 
