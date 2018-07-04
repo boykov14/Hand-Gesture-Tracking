@@ -95,7 +95,7 @@ def yolo_lstm_stage_1(input, num_anchors, num_classes, stateful = False):
 
     X = Conv2D(filters=128, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
     X = BatchNormalization()(X)
-    X = LeakyReLU(alpha=0.1, name='middle_layer')(X)
+    X = LeakyReLU(alpha=0.1)(X)
 
     X = Conv2D(filters=64, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
     X = BatchNormalization()(X)
@@ -104,10 +104,22 @@ def yolo_lstm_stage_1(input, num_anchors, num_classes, stateful = False):
     X = Conv2D(filters=128, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
     X = BatchNormalization()(X)
     X = LeakyReLU(alpha=0.1)(X)
+    X = MaxPooling2D(name='middle_layer')(X)
+
+    X = Conv2D(filters=256, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
+    X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1)(X)
+
+    X = Conv2D(filters=128, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
+    X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1)(X)
+
+    X = Conv2D(filters=256, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(5e-4))(X)
+    X = BatchNormalization()(X)
+    X = LeakyReLU(alpha=0.1)(X)
     X = MaxPooling2D()(X)
 
-    logits = Conv2D(filters=256, kernel_size=(1, 1), padding='same', kernel_regularizer=l2(5e-4), activation='softmax')(X)
-    return Model(input, logits)
+    return Model(input, X)
 
 
 def yolo_lstm_stage_2(input, num_anchors, num_classes):

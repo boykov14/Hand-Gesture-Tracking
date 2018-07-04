@@ -60,10 +60,7 @@ class Gesture_Localizer():
         x = ConvLSTM2D(len(anchors)*(5+self.n_classes), (1, 1), activation='linear', kernel_initializer= 'glorot_uniform', kernel_regularizer=reg , recurrent_regularizer=reg , bias_regularizer=reg , activity_regularizer=reg, stateful=False)(x)
         x = Reshape((int(dims[1]), int(dims[2]), int(dims[3])))(x)
 
-        x = Conv2D(filters=len(anchors)*(5+self.n_classes), kernel_size=(1, 1), padding='same', kernel_regularizer=l2(5e-4))(x)
-        x = BatchNormalization()(x)
-        x = LeakyReLU(alpha=0.1)(x)
-        x = MaxPooling2D()(x)
+        x = Conv2D(filters=len(anchors)*(5+self.n_classes), kernel_size=(1, 1), padding='same', kernel_regularizer=l2(5e-4), activation='softmax')(x)
 
 
         # Place model loss on CPU to reduce GPU memory usage.

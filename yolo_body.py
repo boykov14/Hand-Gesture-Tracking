@@ -55,8 +55,8 @@ def yolo_body(inputs, num_anchors, num_classes, batch_size, stage):
             network = Model(inputs, darknet_body()(inputs))
 
     conv20 = compose(
-        DarknetConv2D_BN_Leaky(256, (3, 3)),
-        DarknetConv2D_BN_Leaky(256, (3, 3)))(network.output)
+        DarknetConv2D_BN_Leaky(512, (3, 3)),
+        DarknetConv2D_BN_Leaky(512, (3, 3)))(network.output)
 
     conv13 = network.get_layer('middle_layer').output
 
@@ -68,7 +68,7 @@ def yolo_body(inputs, num_anchors, num_classes, batch_size, stage):
         name='space_to_depth')(conv21)
 
     x = concatenate([conv21_reshaped, conv20])
-    x = DarknetConv2D_BN_Leaky(256, (3, 3))(x)
+    x = DarknetConv2D_BN_Leaky(512, (3, 3))(x)
     x = DarknetConv2D(num_anchors * (num_classes + 5), (1, 1))(x)
     return Model(inputs, x)
 

@@ -2,12 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="520855fd-13d3-4830-a9c9-70f6caa87ba9" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Gesture_Localizer.py" afterPath="$PROJECT_DIR$/Gesture_Localizer.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/data_augmentor.py" afterPath="$PROJECT_DIR$/data_augmentor.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/data_processing.py" afterPath="$PROJECT_DIR$/data_processing.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/model_network.py" afterPath="$PROJECT_DIR$/model_network.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/parameters/default_values.py" afterPath="$PROJECT_DIR$/parameters/default_values.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/train_model.py" afterPath="$PROJECT_DIR$/train_model.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/yolo_body.py" afterPath="$PROJECT_DIR$/yolo_body.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -21,8 +20,8 @@
       <file leaf-file-name="train_model.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/train_model.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="238">
-              <caret line="14" column="18" lean-forward="false" selection-start-line="14" selection-start-column="18" selection-end-line="14" selection-end-column="18" />
+            <state relative-caret-position="272">
+              <caret line="16" column="14" lean-forward="false" selection-start-line="16" selection-start-column="14" selection-end-line="16" selection-end-column="14" />
               <folding>
                 <element signature="e#160#207#0" expanded="true" />
               </folding>
@@ -33,8 +32,8 @@
       <file leaf-file-name="Gesture_Localizer.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Gesture_Localizer.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1445">
-              <caret line="100" column="31" lean-forward="false" selection-start-line="100" selection-start-column="31" selection-end-line="100" selection-end-column="31" />
+            <state relative-caret-position="274">
+              <caret line="62" column="145" lean-forward="false" selection-start-line="62" selection-start-column="145" selection-end-line="62" selection-end-column="145" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -45,8 +44,8 @@
       <file leaf-file-name="yolo_body.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/yolo_body.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="832">
-              <caret line="421" column="32" lean-forward="false" selection-start-line="421" selection-start-column="31" selection-end-line="421" selection-end-column="32" />
+            <state relative-caret-position="475">
+              <caret line="70" column="34" lean-forward="false" selection-start-line="70" selection-start-column="34" selection-end-line="70" selection-end-column="34" />
               <folding>
                 <element signature="e#38#48#0" expanded="true" />
               </folding>
@@ -108,24 +107,24 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="model_network.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/model_network.py">
+      <file leaf-file-name="default_values.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/parameters/default_values.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1139">
-              <caret line="80" column="63" lean-forward="false" selection-start-line="80" selection-start-column="63" selection-end-line="80" selection-end-column="63" />
-              <folding>
-                <element signature="e#40#56#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="102">
+              <caret line="6" column="137" lean-forward="false" selection-start-line="6" selection-start-column="137" selection-end-line="6" selection-end-column="137" />
+              <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="default_values.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/parameters/default_values.py">
+      <file leaf-file-name="model_network.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/model_network.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="51">
-              <caret line="3" column="22" lean-forward="false" selection-start-line="3" selection-start-column="22" selection-end-line="3" selection-end-column="22" />
-              <folding />
+            <state relative-caret-position="169">
+              <caret line="77" column="61" lean-forward="false" selection-start-line="77" selection-start-column="41" selection-end-line="77" selection-end-column="61" />
+              <folding>
+                <element signature="e#40#56#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -161,13 +160,13 @@
       <list>
         <option value="$PROJECT_DIR$/data_generator.py" />
         <option value="$PROJECT_DIR$/visualisation.py" />
-        <option value="$PROJECT_DIR$/model_network.py" />
-        <option value="$PROJECT_DIR$/yolo_body.py" />
-        <option value="$PROJECT_DIR$/Gesture_Localizer.py" />
-        <option value="$PROJECT_DIR$/parameters/default_values.py" />
-        <option value="$PROJECT_DIR$/train_model.py" />
         <option value="$PROJECT_DIR$/data_processing.py" />
         <option value="$PROJECT_DIR$/data_augmentor.py" />
+        <option value="$PROJECT_DIR$/parameters/default_values.py" />
+        <option value="$PROJECT_DIR$/yolo_body.py" />
+        <option value="$PROJECT_DIR$/model_network.py" />
+        <option value="$PROJECT_DIR$/Gesture_Localizer.py" />
+        <option value="$PROJECT_DIR$/train_model.py" />
       </list>
     </option>
   </component>
@@ -695,16 +694,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/model_network.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1139">
-          <caret line="80" column="63" lean-forward="false" selection-start-line="80" selection-start-column="63" selection-end-line="80" selection-end-column="63" />
-          <folding>
-            <element signature="e#40#56#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/Anaconda3/Lib/site-packages/keras/utils/data_utils.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="198">
@@ -717,42 +706,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="205">
           <caret line="45" column="0" lean-forward="false" selection-start-line="45" selection-start-column="0" selection-end-line="45" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/parameters/default_values.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="3" column="22" lean-forward="false" selection-start-line="3" selection-start-column="22" selection-end-line="3" selection-end-column="22" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/yolo_body.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="832">
-          <caret line="421" column="32" lean-forward="false" selection-start-line="421" selection-start-column="31" selection-end-line="421" selection-end-column="32" />
-          <folding>
-            <element signature="e#38#48#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Gesture_Localizer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1445">
-          <caret line="100" column="31" lean-forward="false" selection-start-line="100" selection-start-column="31" selection-end-line="100" selection-end-column="31" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Anaconda3/Lib/site-packages/keras/engine/training_generator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="176">
-          <caret line="190" column="0" lean-forward="false" selection-start-line="190" selection-start-column="0" selection-end-line="190" selection-end-column="0" />
           <folding />
         </state>
       </provider>
@@ -777,10 +730,56 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/parameters/default_values.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="102">
+          <caret line="6" column="137" lean-forward="false" selection-start-line="6" selection-start-column="137" selection-end-line="6" selection-end-column="137" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/Anaconda3/Lib/site-packages/keras/engine/training_generator.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="176">
+          <caret line="190" column="0" lean-forward="false" selection-start-line="190" selection-start-column="0" selection-end-line="190" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/yolo_body.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="475">
+          <caret line="70" column="34" lean-forward="false" selection-start-line="70" selection-start-column="34" selection-end-line="70" selection-end-column="34" />
+          <folding>
+            <element signature="e#38#48#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/model_network.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="169">
+          <caret line="77" column="61" lean-forward="false" selection-start-line="77" selection-start-column="41" selection-end-line="77" selection-end-column="61" />
+          <folding>
+            <element signature="e#40#56#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Gesture_Localizer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="274">
+          <caret line="62" column="145" lean-forward="false" selection-start-line="62" selection-start-column="145" selection-end-line="62" selection-end-column="145" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/train_model.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="238">
-          <caret line="14" column="18" lean-forward="false" selection-start-line="14" selection-start-column="18" selection-end-line="14" selection-end-column="18" />
+        <state relative-caret-position="272">
+          <caret line="16" column="14" lean-forward="false" selection-start-line="16" selection-start-column="14" selection-end-line="16" selection-end-column="14" />
           <folding>
             <element signature="e#160#207#0" expanded="true" />
           </folding>

@@ -15,7 +15,7 @@ def _main():
     batch_size = 5
     timestep = 1
     lr = 0.0001
-    dc = 0.004
+    dc = 0.01
     a = Gesture_Localizer(N_CLASSES[0], batch_size, timestep, lr=lr, dc=dc)
     print(a.model_first.summary())
     a.train_model(0)
