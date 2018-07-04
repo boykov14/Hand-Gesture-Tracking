@@ -16,10 +16,8 @@ sys.path.append('..')
 voc_anchors = np.array(
     [[1.08, 1.19], [3.42, 4.41], [6.63, 11.38], [9.42, 5.11], [16.62, 10.52]])
 
-IMAGESIZE = 150528
-RESOLUTION = [224, 224, 3]
-RESTORE = 'model_progres.h5'
-N_CLASSES = 3
+#getting defaults
+from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, DATAPATH, N_CLASSES, YOLO_ANCHORS
 
 voc_classes = [
     "hand",
@@ -377,10 +375,10 @@ def preprocess_true_boxes(true_boxes, anchors, image_size):
     num_anchors = len(anchors)
     # Downsampling factor of 5x 2-stride max_pools == 32.
     # TODO: Remove hardcoding of downscaling calculations.
-    assert height % 32 == 0, 'Image sizes in YOLO_v2 must be multiples of 32.'
-    assert width % 32 == 0, 'Image sizes in YOLO_v2 must be multiples of 32.'
-    conv_height = height // 32
-    conv_width = width // 32
+    assert height % 16 == 0, 'Image sizes in YOLO_v2 must be multiples of 32.'
+    assert width % 16 == 0, 'Image sizes in YOLO_v2 must be multiples of 32.'
+    conv_height = height // 16
+    conv_width = width // 16
     num_box_params = true_boxes.shape[1]
     detectors_mask = np.zeros(
         (conv_height, conv_width, num_anchors, 1), dtype=np.float32)

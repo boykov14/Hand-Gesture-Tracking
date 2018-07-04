@@ -103,6 +103,7 @@ def process_data(images, boxes=None, augmented=0):
     processed_images = [i.resize((RESOLUTION[0], RESOLUTION[1]), PIL.Image.BICUBIC) for i in images]
     processed_images = [np.array(image, dtype=np.float) for image in processed_images]
     processed_images = [image / 255. for image in processed_images]
+    processed_images = np.reshape(processed_images, (-1, 1, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))
 
     if boxes is not None:
         # Box preprocessing.
@@ -153,3 +154,21 @@ def get_detector_mask(boxes, anchors):
         detectors_mask[i], matching_true_boxes[i] = preprocess_true_boxes(box, anchors, [RESOLUTION[0], RESOLUTION[1]])
 
     return np.array(detectors_mask), np.array(matching_true_boxes)
+
+def get_classes(classes_path):
+    '''loads the classes'''
+    with open(classes_path) as f:
+        class_names = f.readlines()
+    class_names = [c.strip() for c in class_names]
+    return class_names
+
+def get_anchors(anchors_path):
+    '''loads the anchors from a file'''
+    if os.path.isfile(anchors_path):
+        with open(anchors_path) as f:
+            anchors = f.readline()
+            anchors = [float(x) for x in anchors.split(',')]
+            return np.array(anchors).reshape(-1, 2)
+    else:
+        Warning("Could not open anchors file, using default.")
+        return YOLO_ANCHORS

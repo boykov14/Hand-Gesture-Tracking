@@ -82,9 +82,8 @@ def yolo_lstm_stage_1(input, num_anchors, num_classes, stateful = False):
     X = ConvLSTM2D(filters=64, kernel_size=(3, 3), padding='same', return_sequences=True, stateful=stateful, data_format='channels_last', kernel_regularizer = l2(5e-4))(input)
 
     dims = X.shape
-    print(X.shape, dims[2], dims[3], dims[4])
-    X = Reshape(( int(dims[2]), int(dims[3]), int(dims[4])))(X)#tf.reshape(X, [dims[0], dims[2], dims[3], dims[4]]) #Reshape((dims[0] * dims[1], dims[2], dims[3], dims[4]))(X)
-    print(X.shape)
+    X = Reshape(( int(dims[2]), int(dims[3]), int(dims[4])))(X)
+
     X = BatchNormalization()(X)
     X = LeakyReLU(alpha=0.1)(X)
     X = MaxPooling2D()(X)
