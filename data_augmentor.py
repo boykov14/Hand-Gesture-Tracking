@@ -3,18 +3,33 @@ import numpy as np
 import random
 from draw_boxes import draw_boxes
 
-IMAGESIZE = 150528
-RESOLUTION = [224, 224, 3]
+from parameters.default_values import IMAGESIZE, RESOLUTION, RESTORE_PATHS, N_CLASSES, YOLO_ANCHORS
 
-def augment(images, boxes, code, flip = -1, transpose = -1):
+def augment(images, boxes, code, flip = -1, transpose = -1, crop = 0):
     # check_labels(images, boxes, ["lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol"])
-
+   # cv2.imshow('image', draw_boxes(images[0], [boxes[0].values[:4] * 224], [boxes[0].values[4].astype(int)], ["lol", "lol"]))
 
     # seed = np.random.seed(code)
 
     out_images = []
     out_boxes = []
+
+    img_shape = images[0].shape
+    crop_dims = [0] * 4
+    if crop_dims:
+        crop_dims[0] = img_shape[0] * crop[0]
+        crop_dims[1] = img_shape[0]* crop[1]
+        crop_dims[2] = img_shape[1]* crop[2]
+        crop_dims[3] = img_shape[1]* crop[3]
+        crop_dims[0] = min(max(0, round(crop_dims[0])), img_shape[0])
+        crop_dims[1] = min(max(0, round(crop_dims[1])), img_shape[0])
+        crop_dims[2] = min(max(0, round(crop_dims[2])), img_shape[1])
+        crop_dims[3] = min(max(0, round(crop_dims[3])), img_shape[1])
+
     for image, box in zip(images, boxes):
+
+        img_shape = image.shape
+
         # factor = (code + 1) * random.randint(1, 100) % 3 / 10
         if flip == -1:
             flip = (code + 1) * random.randint(1, 100) % 4
@@ -23,29 +38,88 @@ def augment(images, boxes, code, flip = -1, transpose = -1):
 
         # for i in range(2):
         #     image = noisy(noises[i], image, factor)
-        if flip:
+        if crop_dims:
+            # cv2.imshow('image', image)
+            # cv2.waitKey(0)
+            image = image[crop_dims[0]: crop_dims[1], crop_dims[2]:crop_dims[3], :]
+            # print(image.shape)
+            # print(image.shape, crop_dims)
+            # cv2.imshow('a', image[:, :, 0].astype(np.uint8))
+            # cv2.waitKey(0)
+            image = cv2.resize(image, (img_shape[1], img_shape[0]), interpolation=cv2.INTER_AREA)
+            # print(image.shape)
+            # cv2.imshow('image', image)
+            # cv2.waitKey(0)
+
+        if flip != 0:
             image = cv2.flip(image, flip - 2)
-        if transpose:
-            center = (RESOLUTION[0] // 2, RESOLUTION[1] // 2)
+        if transpose != 0:
+            center = (img_shape[1] // 2, img_shape[0] // 2)
             M = cv2.getRotationMatrix2D(center, 90, 1)
-            image = cv2.warpAffine(image, M, (RESOLUTION[0], RESOLUTION[1]))
+            image = cv2.warpAffine(image, M, (img_shape[0], img_shape[1]))
+
         out_images.append(image)
-        out_boxes.append(box_adjust(box, flip, transpose))
-        # cv2.imshow('a', image[:,:,3])
-        # cv2.waitKey(60)
+        out_boxes.append(box_adjust(box, flip, transpose, [crop_dims, img_shape]))
 
     # check_labels(out_images, out_boxes, ["lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol", "lol"], 1)
 
     return [out_images, out_boxes]
 
-def box_adjust(boxes, flip, transpose):
+
+def crop_process(boxes, dims):
+    out = []
+    num_boxes = 0
+    [crop_dims, image_dims] = dims
+
+    for box in boxes:
+        x1 = box[0] * image_dims[1]
+        y1 = box[1] * image_dims[0]
+        x2 = box[2] * image_dims[1]
+        y2 = box[3] * image_dims[0]
+
+        area1 = (box[2] - box[0]) * (box[3] - box[1])
+
+        x1 = min(max(x1, crop_dims[2]), crop_dims[3])
+        x2 = min(max(x2, crop_dims[2]), crop_dims[3])
+        y1 = min(max(y1, crop_dims[0]), crop_dims[1])
+        y2 = min(max(y2, crop_dims[0]), crop_dims[1])
+
+        height = crop_dims[1] - crop_dims[0]
+        width = crop_dims[3] - crop_dims[2]
+
+        if x1 != x2 and y1 != y2:
+
+            x1 = (x1 - crop_dims[2]) / width
+            y1 = (y1 - crop_dims[0]) / height
+            x2 = (x2 - crop_dims[2]) / width
+            y2 = (y2 - crop_dims[0]) / height
+
+            area2 = (x2 - x1) * (y2 - y1)
+
+            if area2/area1 > 0.6:
+
+                num_boxes += 1
+
+                out.append([x1, y1, x2, y2, box[4]])
+
+    result = np.zeros((num_boxes, 5))
+
+    for i, box in enumerate(out):
+        for j in range(5):
+            result[i][j] = box[j]
+
+    return result
 
 
-    boxes = boxes.values
+
+
+def box_adjust(boxes, flip, transpose, dims):
 
 
     if len(boxes):
         boxes = boxes.reshape((-1, 5))
+        if dims[0]:
+            boxes = crop_process(boxes, dims)
         out_boxes = np.zeros((boxes.shape[0], boxes.shape[1]))
     else:
         out_boxes = boxes
@@ -136,9 +210,14 @@ def check_labels(images, boxes, class_names, augmented = 0):
                 box = box.values
             box = box.reshape((-1, 5))
             box = change_fov(box)
-            cv2.imshow('image', draw_boxes(img, box[:, :4] * 224, box[:, 4].astype(int), class_names))
+            img_dims = img.shape
+            cv2.imshow('image', draw_boxes(img[:,:,0] /255, box[:, :4] * RESOLUTION[0], box[:, 4].astype(int), class_names))
+            cv2.imshow('image', draw_boxes(img[:,:,1] /255, box[:, :4] * RESOLUTION[0], box[:, 4].astype(int), class_names))
+            cv2.waitKey(60)
         else:
-            cv2.imshow('image', img)
+            cv2.imshow('image', img[:,:,0])
+            cv2.imshow('image', img[:,:,1])
+            cv2.waitKey(20)
 
 def change_fov(boxes, wh = 0):
 

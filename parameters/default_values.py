@@ -1,7 +1,7 @@
 import numpy as np
 
 IMAGESIZE = 200704
-RESOLUTION = [112, 112, 4]
+RESOLUTION = [224, 224, 2]
 RESTORE_PATHS = ['C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\topic\\machine_learning\\mouse_controller\\Final_Version\\Weights\\model_progres_seg1.h5', 'C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\topic\\machine_learning\\mouse_controller\\Final_Version\\Weights\\model_best_seg1.h5',
                  'C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\topic\\machine_learning\\mouse_controller\\Final_Version\\Weights\\model_progres_seg2.h5', 'C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\topic\\machine_learning\\mouse_controller\\Final_Version\\Weights\\model_best_seg2.h5',
                  'C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\topic\\machine_learning\\mouse_controller\\Final_Version\\Weights\\model_progres_seg3.h5', 'C:\\Users\\boyko\\OneDrive - University of Waterloo\\coding\\topic\\machine_learning\\mouse_controller\\Final_Version\\Weights\\model_best_seg3.h5']

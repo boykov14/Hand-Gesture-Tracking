@@ -24,15 +24,18 @@ class DataGenerator(Sequence):
         self.anchors = anchors
         self.timestep = timestep
         self.epoch_index = 0
-        self.flip = random.randint(1, 100) % 4
-        self.transpose = random.randint(1, 100) % 2
         self.stage = stage
         self.data_im = [0] * 20
         self.data_bo = [0] * 20
-        self.prev = np.zeros((RESOLUTION[0], RESOLUTION[1], 1))
-        self.diff = np.zeros((RESOLUTION[0], RESOLUTION[1], 1))
+        self.prev = np.zeros((RESOLUTION[0], RESOLUTION[1], 1)).astype(np.uint8)
+        self.diff = np.zeros((RESOLUTION[0], RESOLUTION[1], 1)).astype(np.uint8)
 
-        self.num_imgs = len(self.img_files)
+        self.num_imgs = 0
+        for i in range(num_files):
+            size = len(img_files[i]) // batch_size * batch_size
+
+            self.dataset_sizes.append(size)
+            self.num_imgs += size
 
         self.on_epoch_end()
 
@@ -43,22 +46,43 @@ class DataGenerator(Sequence):
 
     def __getitem__(self, index):
 
-        end_index = index + self.batch_size
+        #index = self.indexes[index]
+        # print("    {}".format(index))
+        dataset_index = 0
+        internal_index = 0
+        for i in range(0, len(self.dataset_sizes)):
+            ii = self.dataset_indexes[i]
+            dataset_index += self.dataset_sizes[ii]
+            if dataset_index > index * self.batch_size:
+                internal_index = index * self.batch_size - dataset_index + self.dataset_sizes[ii]
+                dataset_index = ii
+                break
+
+        # indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+        #
+        # # Find list of IDs
+        # list_IDs_temp = [self.list_IDs[k] for k in indexes]
+        list_data = self.img_files[dataset_index][internal_index:internal_index + self.batch_size]
+
+        if internal_index == 0:
+            self.prev = np.zeros((RESOLUTION[0], RESOLUTION[1], 1)).astype(np.uint8)
+            self.diff = np.zeros((RESOLUTION[0], RESOLUTION[1], 1)).astype(np.uint8)
+
         list_images = []
         list_boxes = []
 
-        for val in self.img_files[index:end_index]:
+        for val in list_data:
             img = cv2.imread(val[0])
             img = self.reformat(img)
 
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            diff = cv2.subtract(gray.astype(np.uint8), self.prev.astype(np.uint8))
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
+            diff = cv2.subtract(gray, self.prev)
             A = np.zeros((RESOLUTION[0], RESOLUTION[1], 1))
             A[diff > 10] = 1
             diff = A
             self.prev = gray
 
-            result = np.concatenate((img.astype(np.uint8), diff), axis=2)
+            result = np.concatenate((np.expand_dims(gray, axis=2), diff), axis=2)
             list_images.append(result)
             list_boxes.append(val[1])
 
@@ -66,13 +90,21 @@ class DataGenerator(Sequence):
         # list_images = self.data_im[dataset_index][internal_index:internal_index + self.batch_size]
         # list_boxes = self.data_bo[dataset_index][internal_index:internal_index + self.batch_size]
 
-        self.flip = random.randint(1, 100) % 4
-        self.transpose = random.randint(1, 100) % 2
 
-        list_images, list_boxes = augment(list_images , list_boxes, (index * self.epoch_index), self.flip, self.transpose)
+        flip = self.flip[dataset_index]
+        transpose = self.transpose[dataset_index]
+        crop = self.crop[dataset_index]
+
+        list_images, list_boxes = augment(list_images , list_boxes, (index * self.epoch_index), flip, transpose, crop)
+
+        for im in list_images:
+            cv2.imshow('a', im[:,:,0].astype(np.uint8))
+            cv2.imshow('b', im[:,:,1])
+            cv2.waitKey(60)
 
         image_data, boxes = process_data(list_images, self.stage, list_boxes, 1)
         detectors_mask, matching_true_boxes = get_detector_mask(boxes, self.anchors)
+
 
         # Generate data
         X, y = [image_data, boxes, detectors_mask, matching_true_boxes], np.zeros(len(image_data)) #((-1, self.timestep, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))), boxes, detectors_mask, matching_true_boxes], np.zeros(len(image_data))
@@ -85,26 +117,43 @@ class DataGenerator(Sequence):
         return frame
 
     def on_epoch_end(self):
-        self.flip = random.randint(1, 100) % 4
-        self.transpose = random.randint(1, 100) % 2
+
+        self.flip = [0] * self.num_files
+        self.transpose = [0] * self.num_files
+        self.crop = [0] * self.num_files
+
+        for i in range(self.num_files):
+
+            self.flip[i] = random.randint(1, 100) % 4
+            self.transpose[i] = random.randint(1, 100) % 2
+
+            x1 = random.randint(0, round(RESOLUTION[0] / 4)) / RESOLUTION[0]
+            w1 = random.randint(round(RESOLUTION[0] / 2), RESOLUTION[0]) / RESOLUTION[0]
+            y1 = random.randint(0, round(RESOLUTION[1] / 4)) / RESOLUTION[1]
+            h1 = random.randint(round(RESOLUTION[1] / 2), RESOLUTION[1]) / RESOLUTION[1]
+
+            crop = [y1, y1 + h1, x1, x1 + w1]
+            self.crop[i] = crop
 
         'Updates indexes after each epoch'
         self.indexes = np.arange(int(np.floor(self.num_imgs / self.batch_size)))
+        self.dataset_indexes = np.arange(self.num_files)
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
+            np.random.shuffle(self.dataset_indexes)
         self.epoch_index += 1
 
 def process_data(images, stage, boxes=None, augmented=0):
     '''processes the data'''
-    images = [PIL.Image.fromarray(i, 'RGBA') for i in images]
-    orig_size = np.array([images[0].width, images[0].height])
-    orig_size = np.expand_dims(orig_size, axis=0)
+    # images = [PIL.Image.fromarray(i, 'RGBA') for i in images]
+    # orig_size = np.array([images[0].width, images[0].height])
+    # orig_size = np.expand_dims(orig_size, axis=0)
 
     # Image preprocessing.
-    processed_images = [i.resize((RESOLUTION[0], RESOLUTION[1]), PIL.Image.BICUBIC) for i in images]
-    processed_images = [np.array(image, dtype=np.float) for image in processed_images]
-    processed_images = [image / 255. for image in processed_images]
-    processed_images = np.reshape(processed_images, (-1, 1, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))
+    # processed_images = [i.resize((RESOLUTION[0], RESOLUTION[1]), PIL.Image.BICUBIC) for i in images]
+    # processed_images = [np.array(image, dtype=np.float) for image in processed_images]
+    # processed_images = [image / 255. for image in processed_images]
+    processed_images = np.reshape(images, (-1, 1, RESOLUTION[0], RESOLUTION[1], RESOLUTION[2]))
 
     if boxes is not None:
         # Box preprocessing.
